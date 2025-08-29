@@ -7,6 +7,8 @@ verify_ssl = true
 
 [packages]
 pdfplumber = "*"
+PyPDF2 = "*"
+reportlab = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
