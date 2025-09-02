@@ -9,6 +9,8 @@ verify_ssl = true
 pdfplumber = "*"
 PyPDF2 = "*"
 reportlab = "*"
+flask = "*"
+flask-cors = "*"
 
 [requires]
 python_version = "3.8"

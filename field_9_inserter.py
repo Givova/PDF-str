@@ -26,8 +26,24 @@ def parse_date(date_string):
     day, month, year = date_string.split('.')
     return day, month, year
 
+def convert_to_uppercase(text):
+    """
+    Преобразует текст в заглавные буквы
+    Поддерживает как латинские, так и кириллические символы
+    
+    Args:
+        text (str): Исходный текст
+        
+    Returns:
+        str: Текст в заглавных буквах
+    """
+    if not text:
+        return text
+    
+    return text.upper()
 
-def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_type, brand_model, output_path, font_size=8):
+
+def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_type, brand_model, output_path):
     """
     Функция для вставки всех данных полиса: ФИО, адрес, даты и данные ТС
     
@@ -42,6 +58,10 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
         output_path (str): Путь для сохранения файла
         font_size (int): Размер шрифта
     """
+    
+    # Преобразуем ФИО и адрес в заглавные буквы
+    fio_upper = convert_to_uppercase(fio)
+    address_upper = convert_to_uppercase(address)
     
     # Валидируем даты
     try:
@@ -103,7 +123,7 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
     
     # Функция для вставки текста в заданную позицию
     def insert_text_at_position(text_to_insert, x_position, y_position):
-        can.setFont(font_name, font_size)
+        can.setFont(font_name, 8)  # Фиксированный размер шрифта
         can.setFillColorRGB(0, 0, 0)
         
         # Разделяем текст на слова
@@ -117,11 +137,11 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
         for word_idx, word in enumerate(words):
             if word_idx > 0:
                 # Добавляем обычный пробел между словами
-                current_x += can.stringWidth(' ', font_name, font_size)
+                current_x += can.stringWidth(' ', font_name, 8)
             
             # Рисуем буквы в слове с уменьшенным интервалом
             for char_idx, char in enumerate(word):
-                char_width = can.stringWidth(char, font_name, font_size)
+                char_width = can.stringWidth(char, font_name, 8)
                 
                 # Рисуем символ
                 can.drawString(current_x, y_position, char)
@@ -132,17 +152,17 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
     
     # Функция для вставки отдельного компонента даты
     def insert_date_component(component, x_position, y_position):
-        can.setFont(font_name, font_size)
+        can.setFont(font_name, 8)  # Фиксированный размер шрифта
         can.setFillColorRGB(0, 0, 0)
         can.drawString(x_position, y_position, component)
     
     # Функция для центрирования текста в заданном диапазоне
     def insert_centered_text(text_to_center, start_x, end_x, y_position):
-        can.setFont(font_name, font_size)
+        can.setFont(font_name, 8)  # Фиксированный размер шрифта
         can.setFillColorRGB(0, 0, 0)
         
         # Рассчитываем ширину текста
-        text_width = can.stringWidth(text_to_center, font_name, font_size)
+        text_width = can.stringWidth(text_to_center, font_name, 8)
         
         # Рассчитываем ширину доступной области
         available_width = end_x - start_x
@@ -158,11 +178,11 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
         print(f"  Ширина текста: {text_width}")
         print(f"  Позиция: x={center_x:.1f}, y={y_position}")
     
-    # Вставляем ФИО
-    insert_text_at_position(fio, start_x, start_y_fio)
+    # Вставляем ФИО (в заглавных буквах)
+    insert_text_at_position(fio_upper, start_x, start_y_fio)
     
-    # Вставляем адрес
-    insert_text_at_position(address, start_x, start_y_address)
+    # Вставляем адрес (в заглавных буквах)
+    insert_text_at_position(address_upper, start_x, start_y_address)
     
     # Вставляем отдельные компоненты дат
     # Дата начала
@@ -203,8 +223,8 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
         writer.write(output_file)
     
     print(f"Данные полиса вставлены:")
-    print(f"  ФИО: {fio}")
-    print(f"  Адрес: {address}")
+    print(f"  ФИО: {fio_upper} (преобразовано в заглавные)")
+    print(f"  Адрес: {address_upper} (преобразовано в заглавные)")
     print(f"  Период: {date_start} - {date_end}")
     print(f"  Регистрационный знак: {reg_number}")
     print(f"  Тип ТС: {vehicle_type}")
@@ -212,15 +232,31 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
     print(f"Файл сохранен: {output_path}")
 
 if __name__ == "__main__":
-    # Вставка данных в PDF полис
+    # Тестирование функции преобразования в заглавные буквы
+    print("=== Тест функции convert_to_uppercase ===")
+    test_cases = [
+        "pupkin kirill vasilivich",
+        "g smolensk, ul pushkina, d 7", 
+        "test latin text",
+        "Test Mixed Case 123",
+        ""
+    ]
+    
+    for test_text in test_cases:
+        result = convert_to_uppercase(test_text)
+        print(f"'{test_text}' -> '{result}'")
+    
+    print("=== Тест завершен ===")
+    print()
+    
+    # Вставка данных в PDF полис (теперь с автоматическим преобразованием в заглавные)
     insert_policy_data(
-        fio="PUPKIN KIRILL VASILIVICH",
-        address="G SMOLENSK, UL PUSHKINA, D 7",
+        fio="pupkin kirill vasilivich",  # будет автоматически преобразовано в заглавные
+        address="g smolensk, ul pushkina, d 7",  # будет автоматически преобразовано в заглавные
         date_start="15.03.2024",
         date_end="14.03.2025",
         reg_number="A123BC77",
         vehicle_type="B",
         brand_model="Toyota LAND CRUISER 150",
-        output_path='./out/field_9_filled.pdf',
-        font_size=8
+        output_path='./out/field_9_filled.pdf'
     )
