@@ -13,12 +13,11 @@ def run_backend():
     """Запуск Flask backend"""
     print("🚀 Запуск Backend (Flask API)...")
     try:
-        # Устанавливаем зависимости если нужно
-        subprocess.run([sys.executable, "-m", "pip", "install", "flask", "flask-cors"], 
-                      check=False, capture_output=True)
-        
-        # Запускаем Flask приложение
-        subprocess.run([sys.executable, "app.py"], check=True)
+        # Активируем виртуальную среду и запускаем Flask приложение
+        if os.name == 'nt':  # Windows
+            subprocess.run([".venv\\Scripts\\python.exe", "app.py"], check=True)
+        else:  # Linux/Mac
+            subprocess.run([".venv/bin/python", "app.py"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Ошибка запуска backend: {e}")
         sys.exit(1)
@@ -32,13 +31,31 @@ def run_frontend():
         # Переходим в папку frontend
         os.chdir("frontend")
         
+        # Определяем путь к npm
+        npm_path = "npm"
+        if os.name == 'nt':  # Windows
+            # Пробуем найти npm в стандартных местах
+            possible_paths = [
+                "C:\\Program Files\\nodejs\\npm.cmd",
+                "C:\\Program Files\\nodejs\\npm.exe",
+                "npm.cmd",
+                "npm"
+            ]
+            for path in possible_paths:
+                try:
+                    subprocess.run([path, "--version"], check=True, capture_output=True)
+                    npm_path = path
+                    break
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    continue
+        
         # Проверяем наличие node_modules
         if not os.path.exists("node_modules"):
             print("📦 Установка зависимостей npm...")
-            subprocess.run(["npm", "install"], check=True)
+            subprocess.run([npm_path, "install"], check=True)
         
         # Запускаем React приложение
-        subprocess.run(["npm", "start"], check=True)
+        subprocess.run([npm_path, "start"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Ошибка запуска frontend: {e}")
         print("💡 Убедитесь, что Node.js и npm установлены")
@@ -83,4 +100,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

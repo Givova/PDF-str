@@ -43,6 +43,30 @@ def convert_to_uppercase(text):
     return text.upper()
 
 
+def format_reg_number(reg_number):
+    """
+    Форматирует регистрационный номер: добавляет 0 в начале региона если он состоит из одной цифры
+    
+    Args:
+        reg_number (str): Регистрационный номер (например: "A123BC7" или "A123BC77")
+        
+    Returns:
+        str: Отформатированный номер (например: "A123BC07" или "A123BC77")
+    """
+    if not reg_number or len(reg_number) < 7:
+        return reg_number
+    
+    # Разделяем на основную часть (6 символов) и регион (остальные символы)
+    main_part = reg_number[:6]
+    region_part = reg_number[6:]
+    
+    # Если регион состоит из одной цифры от 1 до 9, добавляем 0 в начале
+    if len(region_part) == 1 and region_part.isdigit() and int(region_part) >= 1:
+        region_part = "0" + region_part
+    
+    return main_part + region_part
+
+
 def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_type, brand_model, output_path):
     """
     Функция для вставки всех данных полиса: ФИО, адрес, даты и данные ТС
@@ -62,6 +86,9 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
     # Преобразуем ФИО и адрес в заглавные буквы
     fio_upper = convert_to_uppercase(fio)
     address_upper = convert_to_uppercase(address)
+    
+    # Форматируем регистрационный номер (добавляем 0 в регион если нужно)
+    formatted_reg_number = format_reg_number(reg_number)
     
     # Валидируем даты
     try:
@@ -197,7 +224,7 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
     
     # Вставляем данные транспортного средства
     # Регистрационный знак
-    insert_text_at_position(reg_number, reg_number_x, reg_number_y)
+    insert_text_at_position(formatted_reg_number, reg_number_x, reg_number_y)
     
     # Тип транспортного средства
     insert_text_at_position(vehicle_type, vehicle_type_x, vehicle_type_y)
@@ -226,7 +253,7 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
     print(f"  ФИО: {fio_upper} (преобразовано в заглавные)")
     print(f"  Адрес: {address_upper} (преобразовано в заглавные)")
     print(f"  Период: {date_start} - {date_end}")
-    print(f"  Регистрационный знак: {reg_number}")
+    print(f"  Регистрационный знак: {formatted_reg_number} (исходный: {reg_number})")
     print(f"  Тип ТС: {vehicle_type}")
     print(f"  Марка и модель: {brand_model}")
     print(f"Файл сохранен: {output_path}")
@@ -255,8 +282,8 @@ if __name__ == "__main__":
         address="g smolensk, ul pushkina, d 7",  # будет автоматически преобразовано в заглавные
         date_start="15.03.2024",
         date_end="14.03.2025",
-        reg_number="A123BC77",
-        vehicle_type="B",
+        reg_number="A123BC7",
+        vehicle_type="A",
         brand_model="Toyota LAND CRUISER 150",
         output_path='./out/field_9_filled.pdf'
     )

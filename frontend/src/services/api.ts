@@ -110,3 +110,4 @@ export const downloadFile = (blob: Blob, filename: string): void => {
 	window.URL.revokeObjectURL(url)
 }
 
+

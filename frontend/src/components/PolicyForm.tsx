@@ -36,12 +36,21 @@ const initialData: PolicyData = {
 
 // Варианты типов транспортных средств
 const vehicleTypes = [
-	{ value: "B", label: "B - Легковые автомобили" },
-	{ value: "C", label: "C - Грузовые автомобили" },
-	{ value: "D", label: "D - Автобусы" },
-	{ value: "A", label: "A - Мотоциклы" },
-	{ value: "BE", label: "BE - Легковые с прицепом" },
-	{ value: "CE", label: "CE - Грузовые с прицепом" },
+	{ value: "A", label: "A. CAR / ЛЕГКОВОЙ АВТОМОБИЛЬ" },
+	{ value: "B", label: "B. MOTORCYCLE / МОТОЦИКЛ" },
+	{ value: "C", label: "C. LORRY OR TRACTOR / ГРУЗОВОЙ АВТОМОБИЛЬ ИЛИ ТЯГАЧ" },
+	{
+		value: "D",
+		label:
+			"D. CYCLE FITTED WITH AUXILIARU ENGINE / МОПЕД ИЛИ ВЕЛОСИПЕД С ПОДВЕСНЫМ ДВИГАТЕЛЕМ",
+	},
+	{ value: "E", label: "E. BUS / АВТОБУС" },
+	{ value: "F1", label: "F1. TRAILER TO CAR / ПРИЦЕП К ЛЕГКОВОМУ АВТОМОБИЛЮ" },
+	{
+		value: "F2",
+		label: "F2. TRAILER TO LORRY / ПРИЦЕП К ГРУЗОВОМУ АВТОМОБИЛЮ",
+	},
+	{ value: "G", label: "G. OTHERS / ПРОЧИЕ" },
 ]
 
 const PolicyForm: React.FC = () => {
@@ -195,7 +204,7 @@ const PolicyForm: React.FC = () => {
 						component="h1"
 						color="primary"
 					>
-						Генератор PDF полисов
+						Оформление Синей карты
 					</Typography>
 				</Box>
 
@@ -225,7 +234,7 @@ const PolicyForm: React.FC = () => {
 								onChange={(e) => updateFormData("fio", e.target.value)}
 								error={!!errors.fio}
 								helperText={errors.fio}
-								placeholder="Иванов Иван Иванович"
+								placeholder="Ivanov Ivan Ivanovich"
 								required
 							/>
 						</Grid>
@@ -242,7 +251,7 @@ const PolicyForm: React.FC = () => {
 								onChange={(e) => updateFormData("address", e.target.value)}
 								error={!!errors.address}
 								helperText={errors.address}
-								placeholder="г. Москва, ул. Ленина, д. 1, кв. 1"
+								placeholder="MOSKOVSKAIA OBL, G ODINTCOVO, PGT VNIISSOK, UL BEREZOVAIA, D 1, KV 1"
 								required
 							/>
 						</Grid>
@@ -360,16 +369,10 @@ const PolicyForm: React.FC = () => {
 												// Ограничиваем ввод только латинскими буквами и цифрами
 												const filteredValue = value.replace(/[^A-Z0-9]/g, "")
 
-												// Если введено больше 6 символов, лишние идут в регион
-												let mainNumber = filteredValue.slice(0, 6)
-												let region = data.reg_number.slice(6, 9)
-
-												if (filteredValue.length > 6) {
-													// Берем все лишние символы (буквы и цифры) и извлекаем только цифры для региона
-													const extraChars = filteredValue.slice(6)
-													const extraDigits = extraChars.replace(/\D/g, "")
-													region = extraDigits.slice(0, 3)
-												}
+												// Ограничиваем основную часть номера до 6 символов
+												const mainNumber = filteredValue.slice(0, 6)
+												// Оставляем регион без изменений
+												const region = data.reg_number.slice(6, 9)
 
 												updateFormData("reg_number", mainNumber + region)
 											}}
@@ -405,10 +408,10 @@ const PolicyForm: React.FC = () => {
 											display: "flex",
 											flexDirection: "column",
 											alignItems: "center",
-											px: 1,
-											py: 0.5,
+											px: 1.5,
+											py: 1,
 											backgroundColor: "#fff",
-											minWidth: "60px",
+											minWidth: "70px",
 										}}
 									>
 										<TextField
@@ -418,22 +421,33 @@ const PolicyForm: React.FC = () => {
 												// Ограничиваем ввод только цифрами
 												const filteredValue = value.replace(/\D/g, "")
 												const mainNumber = data.reg_number.slice(0, 6)
+
+												// Проверяем, что введены не только нули
+												if (
+													filteredValue.length > 0 &&
+													filteredValue.replace(/0/g, "").length === 0
+												) {
+													return // Не позволяем вводить только нули
+												}
+
+												// Ограничиваем максимальную длину региона до 3 символов
 												const region = filteredValue.slice(0, 3)
+
 												updateFormData("reg_number", mainNumber + region)
 											}}
 											variant="standard"
 											inputProps={{
 												style: {
-													fontSize: "10px",
+													fontSize: "16px",
 													fontWeight: "bold",
 													textAlign: "center",
-													width: "30px",
+													width: "40px",
 													border: "none",
 													outline: "none",
 													backgroundColor: "transparent",
-													color: "#666",
+													color: "#000",
 												},
-												placeholder: "777",
+												placeholder: "77",
 											}}
 											sx={{
 												"& .MuiInput-root": {
