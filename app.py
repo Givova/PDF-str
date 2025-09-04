@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import tempfile
 from datetime import datetime
-from field_9_inserter import validate_date, parse_date, insert_policy_data, convert_to_uppercase
+from field_9_inserter import validate_date, parse_date, insert_policy_data, convert_to_uppercase, transliterate_cyrillic_to_latin, transliterate_license_plate
 
 app = Flask(__name__)
 CORS(app)  # Разрешаем CORS для фронтенда
@@ -87,6 +87,47 @@ def validate_date_endpoint():
             
     except Exception as e:
         return jsonify({'valid': False, 'error': str(e)}), 400
+
+@app.route('/api/transliterate', methods=['POST'])
+def transliterate_endpoint():
+    """Транслитерация кириллического текста в латиницу"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'Данные не переданы'}), 400
+        
+        result = {}
+        
+        # Транслитерируем ФИО если передано
+        if 'fio' in data:
+            transliterated = transliterate_cyrillic_to_latin(data['fio'])
+            result['fio'] = convert_to_uppercase(transliterated)
+            result['fio_transliterated'] = transliterated
+        
+        # Транслитерируем адрес если передан
+        if 'address' in data:
+            transliterated = transliterate_cyrillic_to_latin(data['address'])
+            result['address'] = convert_to_uppercase(transliterated)
+            result['address_transliterated'] = transliterated
+        
+        # Транслитерируем регистрационный номер если передан
+        if 'reg_number' in data:
+            transliterated = transliterate_license_plate(data['reg_number'])
+            result['reg_number'] = transliterated
+            result['reg_number_transliterated'] = transliterated
+        
+        # Транслитерируем любой другой текст если передан
+        if 'text' in data:
+            transliterated = transliterate_cyrillic_to_latin(data['text'])
+            result['text'] = convert_to_uppercase(transliterated)
+            result['text_transliterated'] = transliterated
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': f'Ошибка при транслитерации: {str(e)}'}), 500
+
 
 @app.route('/api/convert-uppercase', methods=['POST'])
 def convert_uppercase_endpoint():
@@ -231,6 +272,7 @@ if __name__ == '__main__':
     print("   POST /api/generate-pdf - Генерация PDF")
     print("   GET  /api/health - Проверка работоспособности")
     print("   POST /api/validate-date - Валидация даты")
+    print("   POST /api/transliterate - Транслитерация кириллицы в латиницу")
     print("   POST /api/convert-uppercase - Преобразование в заглавные буквы")
     print("   GET  /api/vehicle-brands - Список марок автомобилей")
     print("   GET  /api/vehicle-models/<brand_id> - Модели для марки")

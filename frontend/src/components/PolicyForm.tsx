@@ -67,16 +67,45 @@ const PolicyForm: React.FC = () => {
 	const [vehicleLoading, setVehicleLoading] = useState<boolean>(false)
 
 	// Обновление данных формы
+	// Валидация символов для разных полей
+	const validateInput = useCallback(
+		(field: keyof PolicyData, value: string): string => {
+			switch (field) {
+				case "fio":
+				case "address":
+					// Разрешены только кириллица, цифры, пробелы и знаки препинания
+					const cyrillicPattern = /^[а-яёА-ЯЁ0-9\s.,\-\/№]*$/
+					if (!cyrillicPattern.test(value)) {
+						return value.replace(/[^а-яёА-ЯЁ0-9\s.,\-\/№]/g, "")
+					}
+					return value
+				case "reg_number":
+					// Разрешены только определенные кириллические буквы и цифры
+					const allowedCyrillicLetters = /^[АВЕКМНОРСТУХавекмнорстух0-9]*$/
+					if (!allowedCyrillicLetters.test(value)) {
+						return value.replace(/[^АВЕКМНОРСТУХавекмнорстух0-9]/g, "")
+					}
+					return value
+				default:
+					return value
+			}
+		},
+		[]
+	)
+
 	const updateFormData = useCallback(
 		(field: keyof PolicyData, value: string | number) => {
+			const stringValue = String(value)
+			const validatedValue = validateInput(field, stringValue)
+
 			setFormState((prev) => ({
 				...prev,
-				data: { ...prev.data, [field]: value },
+				data: { ...prev.data, [field]: validatedValue },
 				errors: { ...prev.errors, [field]: "" }, // Очищаем ошибку при изменении
 			}))
 			setSuccessMessage("") // Очищаем сообщение об успехе
 		},
-		[]
+		[validateInput]
 	)
 
 	// Валидация формы
@@ -233,8 +262,11 @@ const PolicyForm: React.FC = () => {
 								value={data.fio}
 								onChange={(e) => updateFormData("fio", e.target.value)}
 								error={!!errors.fio}
-								helperText={errors.fio}
-								placeholder="Ivanov Ivan Ivanovich"
+								helperText={
+									errors.fio ||
+									"Только русские буквы, цифры и знаки препинания (будет автоматически транслитерировано)"
+								}
+								placeholder="Иванов Иван Иванович"
 								required
 							/>
 						</Grid>
@@ -250,8 +282,11 @@ const PolicyForm: React.FC = () => {
 								value={data.address}
 								onChange={(e) => updateFormData("address", e.target.value)}
 								error={!!errors.address}
-								helperText={errors.address}
-								placeholder="MOSKOVSKAIA OBL, G ODINTCOVO, PGT VNIISSOK, UL BEREZOVAIA, D 1, KV 1"
+								helperText={
+									errors.address ||
+									"Только русские буквы, цифры и знаки препинания (будет автоматически транслитерирован)"
+								}
+								placeholder="г. Москва, ул. Пушкина, д. 10, кв. 5"
 								required
 							/>
 						</Grid>
@@ -366,8 +401,11 @@ const PolicyForm: React.FC = () => {
 											value={data.reg_number.slice(0, 6)}
 											onChange={(e) => {
 												const value = e.target.value.toUpperCase()
-												// Ограничиваем ввод только латинскими буквами и цифрами
-												const filteredValue = value.replace(/[^A-Z0-9]/g, "")
+												// Ограничиваем ввод только разрешенными кириллическими буквами и цифрами
+												const filteredValue = value.replace(
+													/[^АВЕКМНОРСТУХ0-9]/g,
+													""
+												)
 
 												// Ограничиваем основную часть номера до 6 символов
 												const mainNumber = filteredValue.slice(0, 6)
@@ -388,7 +426,7 @@ const PolicyForm: React.FC = () => {
 													outline: "none",
 													backgroundColor: "transparent",
 												},
-												placeholder: "A 777 AA",
+												placeholder: "А777АА",
 											}}
 											sx={{
 												"& .MuiInput-root": {
@@ -496,8 +534,7 @@ const PolicyForm: React.FC = () => {
 									color="text.secondary"
 									sx={{ mt: 0.5, display: "block" }}
 								>
-									Формат: А123БВ77 (1 буква, 3 цифры, 2 буквы, 2-3 цифры
-									региона)
+									Формат: А123БВ77. Разрешенные буквы: А,В,Е,К,М,Н,О,Р,С,Т,У,Х
 								</Typography>
 							</Box>
 						</Grid>

@@ -26,6 +26,127 @@ def parse_date(date_string):
     day, month, year = date_string.split('.')
     return day, month, year
 
+def transliterate_cyrillic_to_latin(text):
+    """
+    Транслитерирует кириллический текст в латиницу согласно правилам для загранпаспорта
+    
+    Args:
+        text (str): Исходный текст на кириллице
+        
+    Returns:
+        str: Текст транслитерированный в латиницу
+    """
+    if not text:
+        return text
+    
+    # Словарь транслитерации согласно правилам для загранпаспорта
+    transliteration_map = {
+        'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E',
+        'Ж': 'ZH', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+        'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+        'Ф': 'F', 'Х': 'KH', 'Ц': 'TS', 'Ч': 'CH', 'Ш': 'SH', 'Щ': 'SHCH',
+        'Ы': 'Y', 'Ъ': 'IE', 'Э': 'E', 'Ю': 'IU', 'Я': 'IA',
+        # Строчные буквы
+        'а': 'A', 'б': 'B', 'в': 'V', 'г': 'G', 'д': 'D', 'е': 'E', 'ё': 'E',
+        'ж': 'ZH', 'з': 'Z', 'и': 'I', 'й': 'Y', 'к': 'K', 'л': 'L', 'м': 'M',
+        'н': 'N', 'о': 'O', 'п': 'P', 'р': 'R', 'с': 'S', 'т': 'T', 'у': 'U',
+        'ф': 'F', 'х': 'KH', 'ц': 'TS', 'ч': 'CH', 'ш': 'SH', 'щ': 'SHCH',
+        'ы': 'Y', 'ъ': 'IE', 'э': 'E', 'ю': 'IU', 'я': 'IA'
+    }
+    
+    # Гласные буквы для проверки позиции мягкого знака
+    vowels = {'А', 'Е', 'Ё', 'И', 'О', 'У', 'Ы', 'Э', 'Ю', 'Я', 
+              'а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я'}
+    
+    result = ""
+    i = 0
+    while i < len(text):
+        char = text[i]
+        
+        # Специальная обработка мягкого знака (Ь, ь)
+        if char in ['Ь', 'ь']:
+            # Проверяем следующий символ
+            if i + 1 < len(text):
+                next_char = text[i + 1]
+                
+                # Мягкий знак перед гласными
+                if next_char in vowels:
+                    # Мягкий знак перед гласной заменяется на Y
+                    result += 'Y'
+                    # Пропускаем следующую гласную, так как она уже учтена в Y
+                    if next_char in ['я', 'Я']:
+                        result += 'A'
+                    elif next_char in ['ю', 'Ю']:
+                        result += 'U'
+                    elif next_char in ['е', 'Е']:
+                        result += 'E'
+                    elif next_char in ['ё', 'Ё']:
+                        result += 'E'
+                    else:
+                        # Для других гласных используем обычную транслитерацию
+                        if next_char in transliteration_map:
+                            result += transliteration_map[next_char]
+                        else:
+                            result += next_char
+                    # Пропускаем следующий символ, так как он уже обработан
+                    i += 1
+                else:
+                    # Если мягкий знак между согласными, он пропадает
+                    # (ничего не добавляем в result)
+                    pass
+            else:
+                # Если мягкий знак в конце слова, он пропадает
+                # (ничего не добавляем в result)
+                pass
+        elif char in transliteration_map:
+            result += transliteration_map[char]
+        else:
+            # Если символ не кириллический, оставляем как есть
+            result += char
+        
+        i += 1
+    
+    return result
+
+
+def transliterate_license_plate(text):
+    """
+    Транслитерирует регистрационный знак с кириллицы на латиницу
+    Используются только разрешенные для номерных знаков буквы
+    
+    Args:
+        text (str): Регистрационный знак на кириллице
+        
+    Returns:
+        str: Регистрационный знак транслитерированный в латиницу
+    """
+    if not text:
+        return text
+    
+    # Словарь транслитерации для регистрационных знаков
+    # Только буквы, разрешенные в российских номерах
+    license_plate_map = {
+        'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H', 
+        'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'У': 'Y', 'Х': 'X',
+        # Строчные буквы
+        'а': 'A', 'в': 'B', 'е': 'E', 'к': 'K', 'м': 'M', 'н': 'H',
+        'о': 'O', 'р': 'P', 'с': 'C', 'т': 'T', 'у': 'Y', 'х': 'X'
+    }
+    
+    result = ""
+    for char in text:
+        if char in license_plate_map:
+            result += license_plate_map[char]
+        elif char.isdigit():
+            # Цифры остаются без изменений
+            result += char
+        else:
+            # Остальные символы (пробелы, дефисы и т.д.) остаются как есть
+            result += char
+    
+    return result
+
+
 def convert_to_uppercase(text):
     """
     Преобразует текст в заглавные буквы
@@ -83,12 +204,18 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
         font_size (int): Размер шрифта
     """
     
-    # Преобразуем ФИО и адрес в заглавные буквы
-    fio_upper = convert_to_uppercase(fio)
-    address_upper = convert_to_uppercase(address)
+    # Транслитерируем ФИО и адрес с кириллицы на латиницу, затем преобразуем в заглавные буквы
+    fio_transliterated = transliterate_cyrillic_to_latin(fio)
+    address_transliterated = transliterate_cyrillic_to_latin(address)
+    
+    fio_upper = convert_to_uppercase(fio_transliterated)
+    address_upper = convert_to_uppercase(address_transliterated)
+    
+    # Транслитерируем регистрационный номер (используем специальные правила для номеров)
+    reg_number_transliterated = transliterate_license_plate(reg_number)
     
     # Форматируем регистрационный номер (добавляем 0 в регион если нужно)
-    formatted_reg_number = format_reg_number(reg_number)
+    formatted_reg_number = format_reg_number(reg_number_transliterated)
     
     # Валидируем даты
     try:
@@ -250,15 +377,42 @@ def insert_policy_data(fio, address, date_start, date_end, reg_number, vehicle_t
         writer.write(output_file)
     
     print(f"Данные полиса вставлены:")
-    print(f"  ФИО: {fio_upper} (преобразовано в заглавные)")
-    print(f"  Адрес: {address_upper} (преобразовано в заглавные)")
+    print(f"  ФИО: '{fio}' -> '{fio_transliterated}' -> '{fio_upper}'")
+    print(f"  Адрес: '{address}' -> '{address_transliterated}' -> '{address_upper}'")
     print(f"  Период: {date_start} - {date_end}")
-    print(f"  Регистрационный знак: {formatted_reg_number} (исходный: {reg_number})")
+    print(f"  Регистрационный знак: '{reg_number}' -> '{reg_number_transliterated}' -> '{formatted_reg_number}'")
     print(f"  Тип ТС: {vehicle_type}")
     print(f"  Марка и модель: {brand_model}")
     print(f"Файл сохранен: {output_path}")
 
 if __name__ == "__main__":
+    # Тестирование функции транслитерации
+    print("=== Тест функции transliterate_cyrillic_to_latin ===")
+    test_cases = [
+        "Иванов Иван Иванович",
+        "г. Москва, ул. Пушкина, д. 10, кв. 5",
+        "Смирнов Петр Сергеевич",
+        "Санкт-Петербург, Невский проспект, д. 25",
+        "Дарья",  # Проверка мягкого знака перед гласной -> DARYA
+        "Наталья",  # Проверка мягкого знака перед гласной -> NATALYA
+        "Игорь",  # Проверка мягкого знака в конце слова -> IGOR (мягкий знак пропадает)
+        "Ольга",  # Проверка мягкого знака между согласными -> OLGA (мягкий знак пропадает)
+        "Татьяна",  # Проверка мягкого знака перед гласной -> TATYANA
+        "Василий",  # й -> Y, получается VASILIY
+        "медведь",  # мягкий знак в конце -> MEDVED
+        "тетрадь",  # мягкий знак в конце -> TETRAD
+        "test latin text",
+        "Test Mixed Case 123",
+        ""
+    ]
+    
+    for test_text in test_cases:
+        result = transliterate_cyrillic_to_latin(test_text)
+        print(f"'{test_text}' -> '{result}'")
+    
+    print("=== Тест завершен ===")
+    print()
+    
     # Тестирование функции преобразования в заглавные буквы
     print("=== Тест функции convert_to_uppercase ===")
     test_cases = [
@@ -276,13 +430,30 @@ if __name__ == "__main__":
     print("=== Тест завершен ===")
     print()
     
-    # Вставка данных в PDF полис (теперь с автоматическим преобразованием в заглавные)
+    # Добавляем тесты для транслитерации регистрационных знаков
+    print("\n=== Тест функции transliterate_license_plate ===")
+    license_plate_test_cases = [
+        "А123ВС77",    # А->A, В->B, С->C
+        "М456КО78",    # М->M, К->K, О->O
+        "Р789УХ99",    # Р->P, У->Y, Х->X
+        "Е001НТ177",   # Е->E, Н->H, Т->T
+        "A123BC77",    # Уже на латинице
+    ]
+    
+    for test_plate in license_plate_test_cases:
+        result = transliterate_license_plate(test_plate)
+        print(f"'{test_plate}' -> '{result}'")
+    
+    print("=== Тест завершен ===")
+    print()
+    
+    # Вставка данных в PDF полис (теперь с транслитерацией и преобразованием в заглавные)
     insert_policy_data(
-        fio="pupkin kirill vasilivich",  # будет автоматически преобразовано в заглавные
-        address="g smolensk, ul pushkina, d 7",  # будет автоматически преобразовано в заглавные
+        fio="Иванов Игорь Васильевич",  # Игорь -> IGOR (мягкий знак пропадает)
+        address="г. Москва, ул. Пушкина, д. 10, кв. 5",  # будет транслитерировано и преобразовано в заглавные
         date_start="15.03.2024",
         date_end="14.03.2025",
-        reg_number="A123BC7",
+        reg_number="А123ВС77",  # будет транслитерировано: А->A, В->B, С->C
         vehicle_type="A",
         brand_model="Toyota LAND CRUISER 150",
         output_path='./out/field_9_filled.pdf'
