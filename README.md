@@ -74,7 +74,7 @@ pdf-coordinate-example/
 ├── start.py                        # Скрипт автозапуска
 ├── data/
 │   ├── Shablon.pdf                 # Шаблон PDF
-│   └── field_9_annotations.json    # Координаты полей
+│   └── models.json                 # Данные моделей автомобилей
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
