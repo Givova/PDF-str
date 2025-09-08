@@ -46,6 +46,23 @@ const initialData: PolicyData = {
 	brand_model: "",
 }
 
+// Периоды страхования
+const insurancePeriods = [
+	{ value: "15_days", label: "15 дней", days: 15 },
+	{ value: "1_month", label: "1 месяц", months: 1 },
+	{ value: "2_months", label: "2 месяца", months: 2 },
+	{ value: "3_months", label: "3 месяца", months: 3 },
+	{ value: "4_months", label: "4 месяца", months: 4 },
+	{ value: "5_months", label: "5 месяцев", months: 5 },
+	{ value: "6_months", label: "6 месяцев", months: 6 },
+	{ value: "7_months", label: "7 месяцев", months: 7 },
+	{ value: "8_months", label: "8 месяцев", months: 8 },
+	{ value: "9_months", label: "9 месяцев", months: 9 },
+	{ value: "10_months", label: "10 месяцев", months: 10 },
+	{ value: "11_months", label: "11 месяцев", months: 11 },
+	{ value: "12_months", label: "12 месяцев", months: 12 },
+]
+
 // Варианты типов транспортных средств согласно ГОСТ Р 50577-2018
 const vehicleTypes = [
 	{
@@ -103,6 +120,85 @@ const PolicyForm: React.FC = () => {
 		Array<{ label: string; value: string }>
 	>([])
 	const [vehicleLoading, setVehicleLoading] = useState<boolean>(false)
+	const [selectedPeriod, setSelectedPeriod] = useState<string>("")
+
+	// Функции для работы с датами
+	const getTodayDate = (): string => {
+		const today = new Date()
+		const day = String(today.getDate()).padStart(2, "0")
+		const month = String(today.getMonth() + 1).padStart(2, "0")
+		const year = today.getFullYear()
+		return `${day}.${month}.${year}`
+	}
+
+	const getMaxStartDate = (): string => {
+		const today = new Date()
+		const maxDate = new Date(
+			today.getFullYear(),
+			today.getMonth() + 1,
+			today.getDate()
+		)
+		const day = String(maxDate.getDate()).padStart(2, "0")
+		const month = String(maxDate.getMonth() + 1).padStart(2, "0")
+		const year = maxDate.getFullYear()
+		return `${year}-${month}-${day}` // Формат для input[type="date"]
+	}
+
+	const getTodayForInput = (): string => {
+		const today = new Date()
+		const day = String(today.getDate()).padStart(2, "0")
+		const month = String(today.getMonth() + 1).padStart(2, "0")
+		const year = today.getFullYear()
+		return `${year}-${month}-${day}` // Формат для input[type="date"]
+	}
+
+	const calculateEndDate = (startDate: string, period: string): string => {
+		if (!startDate || !period) return ""
+
+		const [day, month, year] = startDate.split(".")
+		const start = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+		const periodData = insurancePeriods.find((p) => p.value === period)
+		if (!periodData) return ""
+
+		let endDate: Date
+		if (periodData.days) {
+			endDate = new Date(
+				start.getTime() + periodData.days * 24 * 60 * 60 * 1000
+			)
+		} else if (periodData.months) {
+			endDate = new Date(
+				start.getFullYear(),
+				start.getMonth() + periodData.months,
+				start.getDate()
+			)
+		} else {
+			return ""
+		}
+
+		const endDay = String(endDate.getDate()).padStart(2, "0")
+		const endMonth = String(endDate.getMonth() + 1).padStart(2, "0")
+		const endYear = endDate.getFullYear()
+		return `${endDay}.${endMonth}.${endYear}`
+	}
+
+	// Обработка изменения периода страхования
+	const handlePeriodChange = useCallback(
+		(period: string) => {
+			setSelectedPeriod(period)
+			setFormState((prev) => {
+				if (prev.data.date_start && period) {
+					const endDate = calculateEndDate(prev.data.date_start, period)
+					return {
+						...prev,
+						data: { ...prev.data, date_end: endDate },
+					}
+				}
+				return prev
+			})
+		},
+		[calculateEndDate]
+	)
 
 	// Обновление данных формы
 	// Валидация символов для разных полей
@@ -129,14 +225,24 @@ const PolicyForm: React.FC = () => {
 			const stringValue = String(value)
 			const validatedValue = validateInput(field, stringValue)
 
-			setFormState((prev) => ({
-				...prev,
-				data: { ...prev.data, [field]: validatedValue },
-				errors: { ...prev.errors, [field]: "" }, // Очищаем ошибку при изменении
-			}))
+			setFormState((prev) => {
+				const newData = { ...prev.data, [field]: validatedValue }
+
+				// Если изменилась дата начала и выбран период, пересчитываем дату окончания
+				if (field === "date_start" && selectedPeriod) {
+					const endDate = calculateEndDate(validatedValue, selectedPeriod)
+					newData.date_end = endDate
+				}
+
+				return {
+					...prev,
+					data: newData,
+					errors: { ...prev.errors, [field]: "" }, // Очищаем ошибку при изменении
+				}
+			})
 			setSuccessMessage("") // Очищаем сообщение об успехе
 		},
-		[validateInput]
+		[validateInput, selectedPeriod, calculateEndDate]
 	)
 
 	// Определяем категорию по типу ТС
@@ -219,23 +325,45 @@ const PolicyForm: React.FC = () => {
 		if (!data.brand_model.trim())
 			newErrors.brand_model = "Марка и модель обязательны"
 
-		// Проверяем формат дат
-		const dateRegex = /^\d{2}\.\d{2}\.\d{4}$/
+		// Проверяем дату начала и период страхования
 		if (!data.date_start.trim()) {
 			newErrors.date_start = "Дата начала обязательна"
-		} else if (!dateRegex.test(data.date_start)) {
-			newErrors.date_start = "Формат даты: ДД.ММ.ГГГГ"
+		} else {
+			const dateRegex = /^\d{2}\.\d{2}\.\d{4}$/
+			if (!dateRegex.test(data.date_start)) {
+				newErrors.date_start = "Формат даты: ДД.ММ.ГГГГ"
+			} else {
+				// Проверяем, что дата начала в допустимом диапазоне
+				const [day, month, year] = data.date_start.split(".")
+				const startDate = new Date(
+					parseInt(year),
+					parseInt(month) - 1,
+					parseInt(day)
+				)
+				const today = new Date()
+				today.setHours(0, 0, 0, 0)
+				const maxDate = new Date(
+					today.getFullYear(),
+					today.getMonth() + 1,
+					today.getDate()
+				)
+
+				if (startDate < today) {
+					newErrors.date_start = "Дата начала не может быть в прошлом"
+				} else if (startDate > maxDate) {
+					newErrors.date_start =
+						"Дата начала не может быть более чем через месяц"
+				}
+			}
 		}
 
-		if (!data.date_end.trim()) {
-			newErrors.date_end = "Дата окончания обязательна"
-		} else if (!dateRegex.test(data.date_end)) {
-			newErrors.date_end = "Формат даты: ДД.ММ.ГГГГ"
+		if (!selectedPeriod) {
+			newErrors.date_end = "Период страхования обязателен"
 		}
 
 		setFormState((prev) => ({ ...prev, errors: newErrors }))
 		return Object.keys(newErrors).length === 0
-	}, [formState])
+	}, [formState, selectedPeriod])
 
 	// Отправка формы
 	const handleSubmit = useCallback(
@@ -390,7 +518,7 @@ const PolicyForm: React.FC = () => {
 							/>
 						</Grid>
 
-						{/* Даты */}
+						{/* Дата начала полиса */}
 						<Grid
 							item
 							xs={12}
@@ -413,8 +541,12 @@ const PolicyForm: React.FC = () => {
 										updateFormData("date_start", "")
 									}
 								}}
+								inputProps={{
+									min: getTodayForInput(),
+									max: getMaxStartDate(),
+								}}
 								error={!!errors.date_start}
-								helperText={errors.date_start || "Выберите дату"}
+								helperText={errors.date_start || "От сегодня до месяца вперед"}
 								required
 								InputLabelProps={{
 									shrink: true,
@@ -422,36 +554,65 @@ const PolicyForm: React.FC = () => {
 							/>
 						</Grid>
 
+						{/* Период страхования */}
 						<Grid
 							item
 							xs={12}
 							md={6}
 						>
-							<TextField
+							<FormControl
 								fullWidth
-								type="date"
-								label="Дата окончания полиса"
-								value={
-									data.date_end
-										? data.date_end.split(".").reverse().join("-")
-										: ""
-								}
-								onChange={(e) => {
-									if (e.target.value) {
-										const [year, month, day] = e.target.value.split("-")
-										updateFormData("date_end", `${day}.${month}.${year}`)
-									} else {
-										updateFormData("date_end", "")
-									}
-								}}
 								error={!!errors.date_end}
-								helperText={errors.date_end || "Выберите дату"}
 								required
-								InputLabelProps={{
-									shrink: true,
-								}}
-							/>
+							>
+								<InputLabel>Период страхования</InputLabel>
+								<Select
+									value={selectedPeriod}
+									onChange={(e) => handlePeriodChange(e.target.value)}
+									label="Период страхования"
+								>
+									{insurancePeriods.map((period) => (
+										<MenuItem
+											key={period.value}
+											value={period.value}
+										>
+											{period.label}
+										</MenuItem>
+									))}
+								</Select>
+								{errors.date_end && (
+									<Typography
+										variant="caption"
+										color="error"
+										sx={{ mt: 0.5, mx: 1.75 }}
+									>
+										{errors.date_end}
+									</Typography>
+								)}
+							</FormControl>
 						</Grid>
+
+						{/* Дата окончания (только для отображения) */}
+						{data.date_end && (
+							<Grid
+								item
+								xs={12}
+								md={6}
+							>
+								<TextField
+									fullWidth
+									label="Дата окончания полиса"
+									value={data.date_end}
+									InputProps={{
+										readOnly: true,
+									}}
+									helperText="Рассчитывается автоматически"
+									InputLabelProps={{
+										shrink: true,
+									}}
+								/>
+							</Grid>
+						)}
 
 						{/* Регистрационный знак */}
 						<Grid
