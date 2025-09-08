@@ -20,8 +20,18 @@ import {
 	Download as DownloadIcon,
 	Description as PdfIcon,
 } from "@mui/icons-material"
-import { PolicyData, FormState } from "../types"
+import {
+	PolicyData,
+	FormState,
+	LicensePlateData,
+	VehicleCategory,
+} from "../types"
 import { PdfGeneratorApi, downloadFile } from "../services/api"
+import LicensePlateInput from "./LicensePlateInput"
+import {
+	LicensePlateValidator,
+	licensePlateUtils,
+} from "../utils/licensePlateValidation"
 
 // Начальные данные формы
 const initialData: PolicyData = {
@@ -30,27 +40,55 @@ const initialData: PolicyData = {
 	date_start: "",
 	date_end: "",
 	reg_number: "",
+	license_plate: { category: "standard" },
 	vehicle_type: "",
+	vehicle_category: "standard",
 	brand_model: "",
 }
 
-// Варианты типов транспортных средств
+// Варианты типов транспортных средств согласно ГОСТ Р 50577-2018
 const vehicleTypes = [
-	{ value: "A", label: "A. CAR / ЛЕГКОВОЙ АВТОМОБИЛЬ" },
-	{ value: "B", label: "B. MOTORCYCLE / МОТОЦИКЛ" },
-	{ value: "C", label: "C. LORRY OR TRACTOR / ГРУЗОВОЙ АВТОМОБИЛЬ ИЛИ ТЯГАЧ" },
+	{
+		value: "A",
+		label: "A. CAR / ЛЕГКОВОЙ АВТОМОБИЛЬ",
+		category: "standard" as VehicleCategory,
+	},
+	{
+		value: "B",
+		label: "B. MOTORCYCLE / МОТОЦИКЛ",
+		category: "motorcycle" as VehicleCategory,
+	},
+	{
+		value: "C",
+		label: "C. LORRY OR TRACTOR / ГРУЗОВОЙ АВТОМОБИЛЬ ИЛИ ТЯГАЧ",
+		category: "standard" as VehicleCategory,
+	},
 	{
 		value: "D",
 		label:
-			"D. CYCLE FITTED WITH AUXILIARU ENGINE / МОПЕД ИЛИ ВЕЛОСИПЕД С ПОДВЕСНЫМ ДВИГАТЕЛЕМ",
+			"D. CYCLE FITTED WITH AUXILIARY ENGINE / МОПЕД ИЛИ ВЕЛОСИПЕД С ПОДВЕСНЫМ ДВИГАТЕЛЕМ",
+		category: "motorcycle" as VehicleCategory,
 	},
-	{ value: "E", label: "E. BUS / АВТОБУС" },
-	{ value: "F1", label: "F1. TRAILER TO CAR / ПРИЦЕП К ЛЕГКОВОМУ АВТОМОБИЛЮ" },
+	{
+		value: "E",
+		label: "E. BUS / АВТОБУС",
+		category: "standard" as VehicleCategory,
+	},
+	{
+		value: "F1",
+		label: "F1. TRAILER TO CAR / ПРИЦЕП К ЛЕГКОВОМУ АВТОМОБИЛЮ",
+		category: "trailer" as VehicleCategory,
+	},
 	{
 		value: "F2",
 		label: "F2. TRAILER TO LORRY / ПРИЦЕП К ГРУЗОВОМУ АВТОМОБИЛЮ",
+		category: "trailer" as VehicleCategory,
 	},
-	{ value: "G", label: "G. OTHERS / ПРОЧИЕ" },
+	{
+		value: "G",
+		label: "G. OTHERS / ПРОЧИЕ",
+		category: "standard" as VehicleCategory,
+	},
 ]
 
 const PolicyForm: React.FC = () => {
@@ -79,13 +117,6 @@ const PolicyForm: React.FC = () => {
 						return value.replace(/[^а-яёА-ЯЁ0-9\s.,\-\/№]/g, "")
 					}
 					return value
-				case "reg_number":
-					// Разрешены только определенные кириллические буквы и цифры
-					const allowedCyrillicLetters = /^[АВЕКМНОРСТУХавекмнорстух0-9]*$/
-					if (!allowedCyrillicLetters.test(value)) {
-						return value.replace(/[^АВЕКМНОРСТУХавекмнорстух0-9]/g, "")
-					}
-					return value
 				default:
 					return value
 			}
@@ -108,6 +139,62 @@ const PolicyForm: React.FC = () => {
 		[validateInput]
 	)
 
+	// Определяем категорию по типу ТС
+	const getVehicleCategoryByType = useCallback(
+		(vehicleType: string): VehicleCategory => {
+			const vehicleInfo = vehicleTypes.find((v) => v.value === vehicleType)
+			return vehicleInfo ? vehicleInfo.category : "standard"
+		},
+		[]
+	)
+
+	// Обработчик изменения данных регистрационного знака
+	const handleLicensePlateChange = useCallback(
+		(plateData: LicensePlateData) => {
+			// Генерируем текстовое представление номера
+			const plateText = licensePlateUtils.formatForDisplay(plateData)
+
+			setFormState((prev) => ({
+				...prev,
+				data: {
+					...prev.data,
+					license_plate: plateData,
+					vehicle_category: plateData.category,
+					reg_number: plateText,
+				},
+				errors: { ...prev.errors, reg_number: "" }, // Очищаем ошибку при изменении
+			}))
+			setSuccessMessage("") // Очищаем сообщение об успехе
+		},
+		[]
+	)
+
+	// Обработчик изменения типа ТС - автоматически обновляем категорию номера
+	const handleVehicleTypeChange = useCallback(
+		(vehicleType: string) => {
+			const newCategory = getVehicleCategoryByType(vehicleType)
+
+			// Обновляем категорию в данных регистрационного знака
+			const newLicensePlate: LicensePlateData = {
+				category: newCategory,
+			}
+
+			setFormState((prev) => ({
+				...prev,
+				data: {
+					...prev.data,
+					vehicle_type: vehicleType,
+					vehicle_category: newCategory,
+					license_plate: newLicensePlate,
+					reg_number: "", // Очищаем номер при смене типа
+				},
+				errors: { ...prev.errors, vehicle_type: "", reg_number: "" },
+			}))
+			setSuccessMessage("")
+		},
+		[getVehicleCategoryByType]
+	)
+
 	// Валидация формы
 	const validateForm = useCallback((): boolean => {
 		const { data } = formState
@@ -117,8 +204,17 @@ const PolicyForm: React.FC = () => {
 		if (!data.fio.trim()) newErrors.fio = "ФИО обязательно для заполнения"
 		if (!data.address.trim())
 			newErrors.address = "Адрес обязателен для заполнения"
-		if (!data.reg_number.trim())
+
+		// Валидация регистрационного знака с помощью ГОСТ валидатора
+		if (data.license_plate) {
+			const plateValidation = LicensePlateValidator.validate(data.license_plate)
+			if (!plateValidation.isValid) {
+				newErrors.reg_number = plateValidation.errors.join("; ")
+			}
+		} else {
 			newErrors.reg_number = "Регистрационный знак обязателен"
+		}
+
 		if (!data.vehicle_type.trim()) newErrors.vehicle_type = "Тип ТС обязателен"
 		if (!data.brand_model.trim())
 			newErrors.brand_model = "Марка и модель обязательны"
@@ -205,7 +301,10 @@ const PolicyForm: React.FC = () => {
 	// Сброс формы
 	const handleReset = useCallback(() => {
 		setFormState({
-			data: initialData,
+			data: {
+				...initialData,
+				license_plate: { category: "standard" },
+			},
 			loading: false,
 			errors: {},
 		})
@@ -358,185 +457,17 @@ const PolicyForm: React.FC = () => {
 						<Grid
 							item
 							xs={12}
-							md={6}
 						>
-							<Box>
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									gutterBottom
-									sx={{ mb: 1 }}
-								>
-									Регистрационный знак *
-								</Typography>
-								<Box
-									sx={{
-										display: "flex",
-										alignItems: "center",
-										border: errors.reg_number
-											? "2px solid #d32f2f"
-											: "2px solid #000",
-										borderRadius: "8px",
-										backgroundColor: "#fff",
-										overflow: "hidden",
-										width: "fit-content",
-										"&:focus-within": {
-											borderColor: errors.reg_number ? "#d32f2f" : "#1976d2",
-											borderWidth: "3px",
-										},
-									}}
-								>
-									{/* Основная часть номера */}
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											px: 2,
-											py: 1,
-											backgroundColor: "#fff",
-											borderRight: "2px solid #000",
-										}}
-									>
-										<TextField
-											value={data.reg_number.slice(0, 6)}
-											onChange={(e) => {
-												const value = e.target.value.toUpperCase()
-												// Ограничиваем ввод только разрешенными кириллическими буквами и цифрами
-												const filteredValue = value.replace(
-													/[^АВЕКМНОРСТУХ0-9]/g,
-													""
-												)
-
-												// Ограничиваем основную часть номера до 6 символов
-												const mainNumber = filteredValue.slice(0, 6)
-												// Оставляем регион без изменений
-												const region = data.reg_number.slice(6, 9)
-
-												updateFormData("reg_number", mainNumber + region)
-											}}
-											variant="standard"
-											inputProps={{
-												style: {
-													fontSize: "24px",
-													fontWeight: "bold",
-													textAlign: "center",
-													letterSpacing: "2px",
-													width: "140px",
-													border: "none",
-													outline: "none",
-													backgroundColor: "transparent",
-												},
-												placeholder: "А777АА",
-											}}
-											sx={{
-												"& .MuiInput-root": {
-													"&:before": { borderBottom: "none" },
-													"&:after": { borderBottom: "none" },
-													"&:hover:not(.Mui-disabled):before": {
-														borderBottom: "none",
-													},
-												},
-											}}
-										/>
-									</Box>
-
-									{/* Правая часть с регионом и флагом */}
-									<Box
-										sx={{
-											display: "flex",
-											flexDirection: "column",
-											alignItems: "center",
-											px: 1.5,
-											py: 1,
-											backgroundColor: "#fff",
-											minWidth: "70px",
-										}}
-									>
-										<TextField
-											value={data.reg_number.slice(6, 9)}
-											onChange={(e) => {
-												const value = e.target.value
-												// Ограничиваем ввод только цифрами
-												const filteredValue = value.replace(/\D/g, "")
-												const mainNumber = data.reg_number.slice(0, 6)
-
-												// Проверяем, что введены не только нули
-												if (
-													filteredValue.length > 0 &&
-													filteredValue.replace(/0/g, "").length === 0
-												) {
-													return // Не позволяем вводить только нули
-												}
-
-												// Ограничиваем максимальную длину региона до 3 символов
-												const region = filteredValue.slice(0, 3)
-
-												updateFormData("reg_number", mainNumber + region)
-											}}
-											variant="standard"
-											inputProps={{
-												style: {
-													fontSize: "16px",
-													fontWeight: "bold",
-													textAlign: "center",
-													width: "40px",
-													border: "none",
-													outline: "none",
-													backgroundColor: "transparent",
-													color: "#000",
-												},
-												placeholder: "77",
-											}}
-											sx={{
-												"& .MuiInput-root": {
-													"&:before": { borderBottom: "none" },
-													"&:after": { borderBottom: "none" },
-													"&:hover:not(.Mui-disabled):before": {
-														borderBottom: "none",
-													},
-												},
-											}}
-										/>
-										<Box
-											sx={{
-												display: "flex",
-												alignItems: "center",
-												fontSize: "10px",
-												fontWeight: "bold",
-												color: "#000",
-											}}
-										>
-											RUS
-											<Box
-												sx={{
-													ml: 0.5,
-													width: "12px",
-													height: "8px",
-													background:
-														"linear-gradient(to bottom, #fff 0%, #fff 33%, #0052cc 33%, #0052cc 66%, #d32f2f 66%, #d32f2f 100%)",
-													border: "0.5px solid #000",
-												}}
-											/>
-										</Box>
-									</Box>
-								</Box>
-								{errors.reg_number && (
-									<Typography
-										variant="caption"
-										color="error"
-										sx={{ mt: 0.5, display: "block" }}
-									>
-										{errors.reg_number}
-									</Typography>
-								)}
-								<Typography
-									variant="caption"
-									color="text.secondary"
-									sx={{ mt: 0.5, display: "block" }}
-								>
-									Формат: А123БВ77. Разрешенные буквы: А,В,Е,К,М,Н,О,Р,С,Т,У,Х
-								</Typography>
-							</Box>
+							<LicensePlateInput
+								value={data.license_plate}
+								onChange={handleLicensePlateChange}
+								category={data.vehicle_category || "standard"}
+								vehicleTypeLabel={
+									vehicleTypes.find((v) => v.value === data.vehicle_type)?.label
+								}
+								error={errors.reg_number}
+								required
+							/>
 						</Grid>
 
 						{/* Тип ТС */}
@@ -553,9 +484,7 @@ const PolicyForm: React.FC = () => {
 								<InputLabel>Тип транспортного средства</InputLabel>
 								<Select
 									value={data.vehicle_type}
-									onChange={(e) =>
-										updateFormData("vehicle_type", e.target.value)
-									}
+									onChange={(e) => handleVehicleTypeChange(e.target.value)}
 									label="Тип транспортного средства"
 								>
 									{vehicleTypes.map((type) => (

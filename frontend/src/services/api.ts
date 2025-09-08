@@ -4,6 +4,7 @@ import {
 	ApiResponse,
 	ValidationResult,
 	DownloadResponse,
+	LicensePlateData,
 } from "../types"
 
 // Базовый URL для API
@@ -82,6 +83,30 @@ export class PdfGeneratorApi {
 	}
 
 	/**
+	 * Валидация регистрационного знака
+	 */
+	static async validateLicensePlate(
+		plateData: LicensePlateData
+	): Promise<ValidationResult> {
+		try {
+			const response: AxiosResponse<ValidationResult> = await api.post(
+				"/validate-license-plate",
+				{
+					license_plate: plateData,
+				}
+			)
+			return response.data
+		} catch (error: any) {
+			return {
+				valid: false,
+				error:
+					error.response?.data?.error ||
+					"Ошибка валидации регистрационного знака",
+			}
+		}
+	}
+
+	/**
 	 * Проверка работоспособности API
 	 */
 	static async healthCheck(): Promise<ApiResponse> {
@@ -109,7 +134,3 @@ export const downloadFile = (blob: Blob, filename: string): void => {
 	document.body.removeChild(link)
 	window.URL.revokeObjectURL(url)
 }
-
-
-
-
