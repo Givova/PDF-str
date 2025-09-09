@@ -405,7 +405,9 @@ const PolicyForm: React.FC = () => {
 		setVehicleLoading(true)
 		try {
 			const response = await fetch(
-				`/api/search-vehicles?q=${encodeURIComponent(query)}`
+				`http://localhost:5000/api/search-vehicles?q=${encodeURIComponent(
+					query
+				)}`
 			)
 			const data = await response.json()
 
@@ -721,11 +723,17 @@ const PolicyForm: React.FC = () => {
 										}}
 									/>
 								)}
-								renderOption={(props, option) => (
-									<li {...props}>
-										{typeof option === "string" ? option : option.label}
-									</li>
-								)}
+								renderOption={(props, option) => {
+									const { key, ...rest } = props as any
+									return (
+										<li
+											key={key}
+											{...rest}
+										>
+											{typeof option === "string" ? option : option.label}
+										</li>
+									)
+								}}
 								noOptionsText="Нет подходящих вариантов"
 								loadingText="Поиск..."
 							/>
